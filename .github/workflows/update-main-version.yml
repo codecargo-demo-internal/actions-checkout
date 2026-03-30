@@ -19,10 +19,16 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
     # Note this update workflow can also be used as a rollback tool.
     # For that reason, it's best to pin `actions/checkout` to a known, stable version
     # (typically, about two releases back).
+    - name: CargoWall
+      uses: code-cargo/cargowall-action@v1
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
