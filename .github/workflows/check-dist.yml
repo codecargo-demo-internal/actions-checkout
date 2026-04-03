@@ -21,7 +21,13 @@ jobs:
   check-dist:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@v1
       - uses: actions/checkout@v6
 
       - name: Set Node.js 24.x
