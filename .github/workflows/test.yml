@@ -15,7 +15,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - uses: actions/setup-node@v4
         with:
           node-version: 24.x
@@ -34,8 +40,14 @@ jobs:
         runs-on: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.runs-on }}
 
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
       # Clone this repo
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -216,6 +228,10 @@ jobs:
 
   test-proxy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     container:
       image: ghcr.io/actions/test-ubuntu-git:main.20240221.114913.703z
       options: --dns 127.0.0.1
@@ -228,6 +244,8 @@ jobs:
       https_proxy: http://squid-proxy:3128
     steps:
       # Clone this repo
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -255,11 +273,17 @@ jobs:
 
   test-bypass-proxy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     env:
       https_proxy: http://no-such-proxy:3128
       no_proxy: api.github.com,github.com
     steps:
       # Clone this repo
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checkout
         uses: actions/checkout@v6
 
@@ -287,9 +311,15 @@ jobs:
 
   test-git-container:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     container: bitnami/git:latest
     steps:
       # Clone this repo
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checkout
         uses: actions/checkout@v6
         with:
@@ -325,8 +355,14 @@ jobs:
 
   test-output:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
       # Clone this repo
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checkout
         uses: actions/checkout@v6
         with:

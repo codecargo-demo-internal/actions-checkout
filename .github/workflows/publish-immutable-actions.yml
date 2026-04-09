@@ -11,8 +11,11 @@ jobs:
       contents: read
       id-token: write
       packages: write
+      actions: read
 
     steps:
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@2c11914f7e4e4f1102af5d971899c2f1184bf7fb # v1.0.2
       - name: Checking out
         uses: actions/checkout@v6
       - name: Publish
