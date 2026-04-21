@@ -17,17 +17,21 @@ on:
       - '**.md'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check-dist:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set Node.js 24.x
         uses: actions/setup-node@v4
         with:
           node-version: 24.x
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -36,16 +40,22 @@ jobs:
         run: npm run build
 
       - name: Compare the expected and actual dist/ directories
+        id: diff
         run: |
+          echo "Checking for uncommitted changes in dist directory..."
+          git add .
           if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build.  See status below:"
-            git diff
+            echo "::error::Detected uncommitted changes after build. Please run 'npm run build' and commit the changes."
+            echo "Differences found:"
+            git diff --ignore-space-at-eol dist/
             exit 1
+          else
+            echo "No differences detected in dist directory. Build is up-to-date."
           fi
 
       # If dist/ was different than expected, upload the expected version as an artifact
       - uses: actions/upload-artifact@v4
-        if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+        if: failure()
         with:
           name: dist
           path: dist/
