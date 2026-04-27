@@ -23,8 +23,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
+      id-token: write
  
     steps:
+      - name: CargoWall
+        uses: code-cargo/cargowall-action@v1.1.1
       - name: Checkout repository
         uses: actions/checkout@v6
 
