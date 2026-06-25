@@ -1,0 +1,89 @@
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata:
+  name: developer-platform
+  description: Internal developer platform, CI tooling, and reusable automation.
+  tags:
+    - platform
+    - ci-cd
+spec:
+  owner: group:platform-tooling
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ci-actions-platform
+  description: Reusable GitHub Actions and CI building blocks maintained by the platform team.
+  annotations:
+    backstage.io/source-location: url:https://github.com/codecargo-demo-internal/actions-checkout/
+  tags:
+    - github-actions
+spec:
+  owner: group:platform-tooling
+  domain: developer-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: actions-checkout
+  description: GitHub Action that checks out a Git repository at a particular ref under $GITHUB_WORKSPACE.
+  annotations:
+    github.com/project-slug: codecargo-demo-internal/actions-checkout
+    backstage.io/source-location: url:https://github.com/codecargo-demo-internal/actions-checkout/
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - typescript
+    - github-action
+    - nodejs
+    - checkout
+  links:
+    - url: https://github.com/codecargo-demo-internal/actions-checkout/
+      title: Source Repository
+      icon: github
+    - url: https://github.com/codecargo-demo-internal/actions-checkout/blob/main/action.yml
+      title: action.yml
+spec:
+  type: github-action
+  lifecycle: production
+  owner: group:platform-tooling
+  system: ci-actions-platform
+  dependsOn:
+    - resource:actions-runner-cache
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: actions-runner-cache
+  description: Shared self-hosted runner cache that speeds up repeated checkouts (invented, plausible).
+  tags:
+    - cache
+    - runner
+spec:
+  type: cache
+  owner: group:platform-tooling
+  system: ci-actions-platform
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-tooling
+  description: Team that owns CI tooling and reusable automation actions.
+spec:
+  type: team
+  profile:
+    displayName: Platform Tooling
+    email: platform-tooling@redknot.example.com
+  children: []
+  members:
+    - dana-osei
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: dana-osei
+spec:
+  profile:
+    displayName: Dana Osei
+    email: dana.osei@redknot.example.com
+  memberOf:
+    - platform-tooling
