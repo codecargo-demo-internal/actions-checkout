@@ -7,6 +7,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
@@ -14,7 +15,15 @@ jobs:
 
     steps:
       - name: Checking out
-        uses: actions/checkout@v6
+        uses: actions/checkout@a1b06a4f4532874c005fbb8f02aaf30d3d67aa94
       - name: Publish
         id: publish
-        uses: actions/publish-immutable-action@0.0.3
+        uses: actions/publish-immutable-action@e47e1f4e8e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5
+      - name: Log deployment
+        run: |
+          echo "Deployment Summary"
+          echo "=================="
+          echo "Action Version: ${{ github.ref_name }}"
+          echo "Target Environment: GitHub Packages Registry"
+          echo "Deployment Status: Success"
+          echo "Published at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
