@@ -15,11 +15,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@4a2c540e4b4f7f965010b6075e64c8db5ce5efea
         with:
           node-version: 24.x
-      - uses: actions/checkout@v6
+          cache: npm
+      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
       - run: npm ci
       - run: npm run build
       - run: npm run format-check
@@ -33,11 +35,12 @@ jobs:
       matrix:
         runs-on: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 30
 
     steps:
       # Clone this repo
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
 
       # Basic checkout
       - name: Checkout basic
@@ -188,7 +191,7 @@ jobs:
       # Worktree credentials in container step
       - name: Verify worktree credentials in container step
         if: runner.os == 'Linux'
-        uses: docker://bitnami/git:latest
+        uses: docker://bitnami/git@sha256:c6e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3
         with:
           args: bash __test__/verify-worktree.sh worktree-test container-worktree-branch
 
@@ -216,6 +219,7 @@ jobs:
 
   test-proxy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: ghcr.io/actions/test-ubuntu-git:main.20240221.114913.703z
       options: --dns 127.0.0.1
@@ -229,7 +233,7 @@ jobs:
     steps:
       # Clone this repo
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
 
       # Basic checkout using git
       - name: Checkout basic
@@ -255,13 +259,14 @@ jobs:
 
   test-bypass-proxy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       https_proxy: http://no-such-proxy:3128
       no_proxy: api.github.com,github.com
     steps:
       # Clone this repo
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
 
       # Basic checkout using git
       - name: Checkout basic
@@ -287,11 +292,12 @@ jobs:
 
   test-git-container:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container: bitnami/git:latest
     steps:
       # Clone this repo
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
         with:
           path: localClone
 
@@ -319,16 +325,17 @@ jobs:
 
       # needed to make checkout post cleanup succeed
       - name: Fix Checkout v6
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
         with:
           path: localClone
 
   test-output:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       # Clone this repo
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
         with:
           path: actions-checkout
 
