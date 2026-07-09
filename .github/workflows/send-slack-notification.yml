@@ -1,0 +1,91 @@
+name: Send Slack Notification
+
+on:
+  workflow_call:
+    inputs:
+      message:
+        description: 'Slack message to send'
+        required: true
+        type: string
+      channel:
+        description: 'Slack channel to send message to'
+        required: true
+        type: string
+      status:
+        description: 'Status indicator (success, failure, warning, info)'
+        required: false
+        type: string
+        default: 'info'
+    secrets:
+      slack-webhook-url:
+        description: 'Slack webhook URL'
+        required: true
+    outputs:
+      notification-sent:
+        description: 'Whether the notification was sent successfully'
+        value: ${{ jobs.notify.outputs.sent }}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    outputs:
+      sent: 'true'
+    steps:
+      - name: Prepare Slack message
+        id: prepare-message
+        run: |
+          # Determine color based on status
+          case "${{ inputs.status }}" in
+            success)
+              COLOR="good"
+              ;;
+            failure)
+              COLOR="danger"
+              ;;
+            warning)
+              COLOR="warning"
+              ;;
+            *)
+              COLOR="#0099ff"
+              ;;
+          esac
+          echo "color=${COLOR}" >> "${GITHUB_OUTPUT}"
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.slack-webhook-url }}
+          payload: |
+            {
+              "channel": "${{ inputs.channel }}",
+              "attachments": [
+                {
+                  "color": "${{ steps.prepare-message.outputs.color }}",
+                  "title": "GitHub Notification",
+                  "text": "${{ inputs.message }}",
+                  "fields": [
+                    {
+                      "title": "Repository",
+                      "value": "${{ github.repository }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Branch",
+                      "value": "${{ github.ref_name }}",
+                      "short": true
+                    },
+                    {
+                      "title": "Commit",
+                      "value": "<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    },
+                    {
+                      "title": "Author",
+                      "value": "${{ github.actor }}",
+                      "short": true
+                    }
+                  ],
+                  "footer": "GitHub Actions",
+                  "ts": ${{ github.event.head_commit.timestamp || 'null' }}
+                }
+              ]
+            }
