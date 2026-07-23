@@ -366,6 +366,40 @@ permissions:
   contents: read
 ```
 
+# Python Application
+
+## Running Locally
+
+The repository includes a simple Python application in `app/main.py` that can be run locally:
+
+```bash
+# Run with default version
+python app/main.py
+
+# Run with a custom version
+APP_VERSION=1.0.0 python app/main.py
+```
+
+## Docker
+
+Build and run the application in a Docker container:
+
+```bash
+# Build the image
+docker build -t actions-checkout:latest .
+
+# Run the container
+docker run -e APP_VERSION=1.0.0 actions-checkout:latest
+```
+
+## Releases
+
+Releases are triggered by pushing a version tag (e.g., `v1.0.0`). The release workflow:
+
+1. Builds and pushes a Docker image to the container registry
+2. Deploys the application using the Container Apps Deploy building block
+3. Triggers post-deploy monitoring via the Check Logs Grafana agentic job
+
 # License
 
 The scripts and documentation in this project are released under the [MIT License](LICENSE)
