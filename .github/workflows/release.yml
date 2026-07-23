@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="dev"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        id: docker_build
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Set image output
+        id: image
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      deployed-version: ${{ needs.build.outputs.version }}
+      deployed-environment: production
+      app-url: ${{ steps.deploy.outputs.app-url }}
+      revision-name: ${{ steps.deploy.outputs.revision-name }}
+    steps:
+      - name: Deploy to Container Apps
+        id: deploy
+        uses: codecargo-demo-internal/container-apps-deploy@v1
+        with:
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          container-app-name: ${{ secrets.CONTAINER_APP_NAME }}
+          image: ${{ needs.build.outputs.image }}
+          environment-variables: |
+            {
+              "APP_VERSION": "${{ needs.build.outputs.version }}"
+            }
+          canary-percentage: '25'
+          canary-wait-seconds: '300'
+          health-check-path: '/health'
+          rollback-on-failure: 'true'
+
+      - name: Deployment Summary
+        run: |
+          echo "Deployment completed successfully"
+          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "App URL: ${{ steps.deploy.outputs.app-url }}"
+          echo "Revision: ${{ steps.deploy.outputs.revision-name }}"
