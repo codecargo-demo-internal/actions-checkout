@@ -24,6 +24,7 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       actions: read
       contents: read
@@ -39,10 +40,10 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@b7bf0a3ed3ecfa44160715987c1f3ecc42d4daa0
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
@@ -50,9 +51,15 @@ jobs:
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
 
+    - name: Setup Node.js
+      uses: actions/setup-node@b39b52d1213e96004bbb97b1be3a49c772dcf777
+      with:
+        node-version: '20'
+        cache: 'npm'
+
     - run: npm ci
     - run: npm run build
     - run: rm -rf dist # We want code scanning to analyze lib instead (individual .js files)
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@b7bf0a3ed3ecfa44160715987c1f3ecc42d4daa0
