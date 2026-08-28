@@ -8,7 +8,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: Check licenses
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/setup-node@b39b52d1213e96004bbb97b1be3a49c772dcf777
+        with:
+          node-version: '20'
+          cache: 'npm'
       - run: npm ci
       - run: npm run licensed-check
