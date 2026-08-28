@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            # Remove 'v' prefix if present
+            VERSION="${VERSION#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${VERSION}"
+
+      - name: Build Docker image
+        id: image
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          IMAGE="actions-checkout:${{ steps.version.outputs.version }}"
+          docker build -t "${IMAGE}" .
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "Built image: ${IMAGE}"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      deployed-version: ${{ needs.build.outputs.version }}
+      environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy with Container Apps Deploy
+        id: deploy
+        uses: codecargo-demo-internal/container-apps-deploy@v1
+        with:
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: 'actions-checkout-rg'
+          container-app-name: 'actions-checkout-app'
+          image: ${{ needs.build.outputs.image }}
+          environment-variables: |
+            {
+              "APP_VERSION": "${{ needs.build.outputs.version }}"
+            }
+          canary-percentage: '25'
+          canary-wait-seconds: '300'
+          health-check-path: '/health'
+          rollback-on-failure: 'true'
+
+      - name: Deployment summary
+        run: |
+          echo "Deployment completed successfully"
+          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "Revision: ${{ steps.deploy.outputs.revision-name }}"
+          echo "App URL: ${{ steps.deploy.outputs.app-url }}"
