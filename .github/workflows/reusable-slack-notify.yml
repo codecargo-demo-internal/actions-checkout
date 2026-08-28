@@ -1,0 +1,144 @@
+name: Reusable Slack Notification
+
+on:
+  workflow_call:
+    inputs:
+      message:
+        description: 'Slack message to send'
+        required: true
+        type: string
+      channel:
+        description: 'Slack channel ID or name (e.g., #deployments, C1234567890)'
+        required: true
+        type: string
+      status:
+        description: 'Status indicator (success, failure, warning, info)'
+        required: false
+        default: 'info'
+        type: string
+      include-workflow-info:
+        description: 'Include workflow run information in message'
+        required: false
+        default: true
+        type: boolean
+      include-actor:
+        description: 'Include actor information in message'
+        required: false
+        default: true
+        type: boolean
+    secrets:
+      slack-webhook-url:
+        description: 'Slack webhook URL for posting messages (from Slack App configuration)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare Slack message
+        id: prepare
+        run: |
+          # Determine color based on status
+          case "${{ inputs.status }}" in
+            success)
+              COLOR="36a64f"
+              EMOJI=":white_check_mark:"
+              ;;
+            failure)
+              COLOR="ff0000"
+              EMOJI=":x:"
+              ;;
+            warning)
+              COLOR="ffaa00"
+              EMOJI=":warning:"
+              ;;
+            *)
+              COLOR="0099ff"
+              EMOJI=":information_source:"
+              ;;
+          esac
+          
+          {
+            echo "color=$COLOR"
+            echo "emoji=$EMOJI"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build message payload
+        id: payload
+        env:
+          MESSAGE: ${{ inputs.message }}
+          CHANNEL: ${{ inputs.channel }}
+          STATUS: ${{ inputs.status }}
+          EMOJI: ${{ steps.prepare.outputs.emoji }}
+          COLOR: ${{ steps.prepare.outputs.color }}
+          INCLUDE_WORKFLOW: ${{ inputs.include-workflow-info }}
+          INCLUDE_ACTOR: ${{ inputs.include-actor }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref }}
+        run: |
+          # Build the message payload using jq for robust JSON handling
+          FIELDS='[]'
+          
+          # Add workflow info if requested
+          if [ "$INCLUDE_WORKFLOW" = "true" ]; then
+            FIELDS=$(jq -n \
+              --arg repo "$REPO" \
+              --arg run_id "$RUN_ID" \
+              --arg run_number "$RUN_NUMBER" \
+              --arg ref "$REF" \
+              '[
+                {title: "Repository", value: $repo, short: true},
+                {title: "Workflow Run", value: "<https://github.com/\($repo)/actions/runs/\($run_id)|#\($run_number)>", short: true},
+                {title: "Ref", value: $ref, short: true}
+              ]')
+          fi
+          
+          # Add actor info if requested
+          if [ "$INCLUDE_ACTOR" = "true" ]; then
+            FIELDS=$(echo "$FIELDS" | jq \
+              --arg actor "$ACTOR" \
+              '. += [{title: "Triggered by", value: $actor, short: true}]')
+          fi
+          
+          # Build complete payload
+          PAYLOAD=$(jq -n \
+            --arg channel "$CHANNEL" \
+            --arg color "$COLOR" \
+            --arg emoji "$EMOJI" \
+            --arg status "$STATUS" \
+            --arg message "$MESSAGE" \
+            --argjson fields "$FIELDS" \
+            --arg timestamp "$(date +%s)" \
+            '{
+              channel: $channel,
+              attachments: [
+                {
+                  color: $color,
+                  title: "\($emoji) \($status)",
+                  text: $message,
+                  fields: $fields,
+                  footer: "GitHub Actions",
+                  ts: ($timestamp | tonumber)
+                }
+              ]
+            }')
+          
+          {
+            echo "payload<<EOF"
+            echo "$PAYLOAD"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: ${{ steps.payload.outputs.payload }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook-url }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
