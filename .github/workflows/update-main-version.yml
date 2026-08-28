@@ -19,18 +19,47 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     # Note this update workflow can also be used as a rollback tool.
     # For that reason, it's best to pin `actions/checkout` to a known, stable version
     # (typically, about two releases back).
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       with:
         fetch-depth: 0
+    - name: Validate target reference
+      run: |
+        TARGET="${{ github.event.inputs.target }}"
+        # Validate that target is a valid git reference (commit SHA, tag, or branch)
+        if ! git rev-parse --verify "${TARGET}" > /dev/null 2>&1; then
+          echo "::error::Invalid git reference: ${TARGET}"
+          exit 1
+        fi
+        echo "Validated target reference: ${TARGET}"
     - name: Git config
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
     - name: Tag new target
-      run: git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+      id: tag
+      run: |
+        MAJOR_VERSION="${{ github.event.inputs.major_version }}"
+        TARGET="${{ github.event.inputs.target }}"
+        git tag -f "${MAJOR_VERSION}" "${TARGET}"
+        COMMIT_SHA=$(git rev-parse "${TARGET}")
+        {
+          echo "major_version=${MAJOR_VERSION}"
+          echo "target=${TARGET}"
+          echo "commit_sha=${COMMIT_SHA}"
+        } >> "$GITHUB_OUTPUT"
     - name: Push new tag
-      run: git push origin ${{ github.event.inputs.major_version }} --force
+      run: |
+        MAJOR_VERSION="${{ github.event.inputs.major_version }}"
+        git push origin "${MAJOR_VERSION}" --force
+    - name: Log Deployment
+      run: |
+        MAJOR_VERSION="${{ steps.tag.outputs.major_version }}"
+        TARGET="${{ steps.tag.outputs.target }}"
+        COMMIT_SHA="${{ steps.tag.outputs.commit_sha }}"
+        echo "::notice title=Deployment Log::Updated major version tag ${MAJOR_VERSION} to point to ${TARGET} (commit: ${COMMIT_SHA})"
+        echo "Deployment: major_version=${MAJOR_VERSION} target=${TARGET} commit_sha=${COMMIT_SHA} environment=repository outcome=success"
