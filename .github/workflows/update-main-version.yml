@@ -19,18 +19,35 @@ on:
 jobs:
   tag:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     # Note this update workflow can also be used as a rollback tool.
     # For that reason, it's best to pin `actions/checkout` to a known, stable version
     # (typically, about two releases back).
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f
       with:
         fetch-depth: 0
     - name: Git config
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+    - name: Validate target reference
+      run: |
+        TARGET="${{ github.event.inputs.target }}"
+        # Validate that target is a valid git reference (tag, branch, or commit SHA)
+        if ! git rev-parse --verify "$TARGET" > /dev/null 2>&1; then
+          echo "Error: Invalid git reference '$TARGET'. Must be a valid tag, branch, or commit SHA."
+          exit 1
+        fi
+        echo "Validated target reference: $TARGET"
     - name: Tag new target
-      run: git tag -f ${{ github.event.inputs.major_version }} ${{ github.event.inputs.target }}
+      run: |
+        MAJOR_VERSION="${{ github.event.inputs.major_version }}"
+        TARGET="${{ github.event.inputs.target }}"
+        git tag -f "$MAJOR_VERSION" "$TARGET"
+        echo "Created tag: $MAJOR_VERSION -> $TARGET"
     - name: Push new tag
-      run: git push origin ${{ github.event.inputs.major_version }} --force
+      run: |
+        MAJOR_VERSION="${{ github.event.inputs.major_version }}"
+        git push origin "$MAJOR_VERSION" --force
+        echo "Deployment complete: Moved major version $MAJOR_VERSION to target reference"
